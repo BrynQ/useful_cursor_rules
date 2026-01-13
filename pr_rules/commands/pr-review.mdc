@@ -1,0 +1,417 @@
+---
+description: Review Pull Requests for general code quality issues
+globs:
+alwaysApply: false
+---
+
+# pr-review
+
+## Overview
+
+Review any Pull Request for general code quality, security issues, and best practices. Works with any Python project.
+
+**Usage:**
+```
+@pr-review <PR_NUMBER>
+@pr-review 42
+@pr-review https://github.com/owner/repo/pull/42
+```
+
+---
+
+## Language Rule
+
+[!] **IMPORTANT: All review output MUST be written in English.**
+
+---
+
+## Evidence-Based Review Guidelines
+
+[!] **CRITICAL: Avoid vague, unsubstantiated feedback.**
+
+### ❌ DO NOT use vague terms without evidence:
+- "Improved clarity" - WHY is it more clear?
+- "Better structure" - WHAT makes it better?
+- "Cleaner code" - HOW is it cleaner?
+- "Good change" - WHAT specifically is good about it?
+
+### ✅ DO provide evidence-based feedback:
+
+| Instead of... | Say... |
+|---------------|--------|
+| "Improved clarity" | "Follows the same pattern as `other_file.py:23` making it consistent" |
+| "Better structure" | "Groups related imports together, matching PEP8 import ordering" |
+| "Good refactoring" | "Extracts duplicated logic from lines 45 and 89 into a single function" |
+| "Cleaner code" | "Removes unused variable `temp` that was assigned but never read" |
+
+### Confidence Levels
+
+When making observations, indicate confidence level:
+
+| Level | When to use | Example |
+|-------|-------------|---------|
+| **Certain** | Objective fact, verifiable | "Unused import `List` - not referenced anywhere in file" |
+| **Likely** | High confidence but needs context | "This appears to duplicate logic in `utils.py:34`" |
+| **Uncertain** | Cannot verify without more context | "⚠️ This might conflict with existing behavior - verify manually" |
+| **Unknown** | Cannot assess | "Cannot determine if this follows project conventions without seeing other files" |
+
+### False Positive/Negative Awareness
+
+Always consider:
+
+1. **False Positives** (flagging good code as bad):
+   - Import used dynamically via `getattr()` or `__import__()`
+   - Variable used in f-string or format string
+   - Code that looks dead but is called via reflection
+
+2. **False Negatives** (missing actual issues):
+   - Logic errors require runtime context
+   - Security issues may be context-dependent
+   - Type errors when type hints are incomplete
+
+**When uncertain, say so explicitly:**
+```
+⚠️ UNCERTAIN: `data` variable appears unused, but may be accessed 
+dynamically. Verify before removing.
+```
+
+### Context Requirements
+
+Before making subjective assessments, check:
+- [ ] Have I seen the related files to understand patterns?
+- [ ] Do I know the project's conventions?
+- [ ] Can I point to specific evidence for my claim?
+- [ ] Am I making assumptions without verification?
+
+**If you cannot provide evidence, do not make the claim.**
+
+---
+
+## Prerequisites
+
+- GitHub CLI installed and authenticated: `gh auth login`
+- Access to the repository
+
+---
+
+## Standards Reference
+
+[!] **IMPORTANT**: All standards are defined in `@shared/code-quality-standards.mdc`
+
+This command checks:
+- 🔒 **Security**: Exposed secrets, SQL injection, dangerous functions
+- ❌ **Errors**: Syntax errors, logic bugs, type errors
+- ⚠️ **Warnings**: Unused code, code smells, debug artifacts
+- 💡 **Info**: Type hints, documentation, style
+
+---
+
+## Command Flow
+
+```
+1. Fetch PR data
+   gh pr view <PR_NUMBER> --json title,body,files,commits,headRefOid,baseRefName
+
+2. Check for Code Quality Badge in PR body
+   - Look for: <!-- CODE-QUALITY-STATUS -->
+   - If found and recent → FAST PATH
+   - If not found → FULL REVIEW
+
+3. Get changed files with full diff
+   gh pr diff <PR_NUMBER>
+
+4. For each changed .py file:
+   a. Security scan (CRITICAL)
+   b. Error detection (ERROR)
+   c. Code quality checks (WARNING)
+   d. Style/docs review (INFO)
+
+5. Aggregate results by severity
+
+6. Determine verdict:
+   - No CRITICAL/ERROR → Can approve
+   - Has CRITICAL/ERROR → Must fix
+
+7. Present findings and ask user action
+```
+
+---
+
+## Review Checklist
+
+### 🔒 Security Scan [CRITICAL]
+
+```
+[ ] No hard-coded passwords, API keys, tokens, secrets
+[ ] No SQL injection vulnerabilities
+[ ] No use of eval(), exec() on untrusted data
+[ ] No shell=True with user input
+[ ] No pickle.loads() on untrusted data
+[ ] No exposed .env files or credentials
+```
+
+### ❌ Error Detection [ERROR]
+
+```
+[ ] No syntax errors
+[ ] No undefined variables/imports
+[ ] No obvious null/None dereference
+[ ] No unreachable code
+[ ] No infinite loop risks
+[ ] No empty except blocks that swallow errors
+[ ] No type mismatches (if type hints present)
+```
+
+### ⚠️ Code Quality [WARNING]
+
+```
+[ ] No unused imports
+[ ] No unused variables
+[ ] No print() statements (use logging)
+[ ] No breakpoint() or pdb.set_trace()
+[ ] No large commented-out code blocks
+[ ] No TODO/FIXME without issue reference
+[ ] No overly complex functions (>50 lines)
+[ ] No bare except: clauses
+```
+
+### 💡 Suggestions [INFO]
+
+```
+[ ] Functions have type hints
+[ ] Public functions have docstrings
+[ ] Naming follows conventions
+[ ] No magic numbers (use constants)
+[ ] Proper error messages
+```
+
+---
+
+## Output Format
+
+### Clean Review [OK]
+```markdown
+## PR Review: #{number} - {title}
+
+**Verdict: ✅ APPROVED**
+
+{One-line summary of changes}
+
+### Quality Summary
+| Check | Status |
+|-------|--------|
+| Security | ✅ No issues |
+| Errors | ✅ No issues |
+| Warnings | ✅ Clean |
+| Info | 💡 {n} suggestions |
+
+### Suggestions (optional)
+- `file.py:15` - Consider adding type hint for `user_id`
+- `utils.py:42` - Consider adding docstring
+
+---
+*Code Quality Bot - {date}*
+```
+
+### Issues Found [!]
+```markdown
+## PR Review: #{number} - {title}
+
+**Verdict: ❌ CHANGES REQUESTED**
+
+{One-line summary of changes}
+
+### Quality Summary
+| Check | Status |
+|-------|--------|
+| Security | 🔴 {n} critical |
+| Errors | 🔴 {n} errors |
+| Warnings | 🟡 {n} warnings |
+| Info | 💡 {n} suggestions |
+
+### 🔒 CRITICAL Security Issues
+1. `config.py:12` - Hard-coded API key detected
+   ```python
+   api_key = "sk-abc123..."  # EXPOSED SECRET
+   ```
+   **Fix:** Use environment variable: `os.environ.get("API_KEY")`
+
+### ❌ Errors
+1. `utils.py:45` - Bare except clause swallows all errors
+   ```python
+   except:
+       pass
+   ```
+   **Fix:** Catch specific exceptions or at minimum log the error
+
+### ⚠️ Warnings
+1. `main.py:8` - Unused import: `from typing import List`
+2. `main.py:67` - Print statement in production code
+3. `helpers.py:23` - TODO without issue reference
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+What would you like to do?
+
+[1] Fix auto-fixable issues (2 issues can be auto-fixed)
+[2] Submit as REQUEST CHANGES review
+[3] Show report only (no action)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## User Actions
+
+### [1] Fix Auto-Fixable Issues
+```
+Analyzing auto-fixable issues...
+
+Auto-fixable (2):
+[x] Remove unused import: `from typing import List`
+[x] Remove print statement at line 67
+
+Manual fix required (2):
+[!] `config.py:12` - Hard-coded API key (security issue)
+[!] `utils.py:45` - Bare except clause
+
+Applying auto-fixes...
+[x] Fixed: main.py (2 issues)
+
+Committing...
+[x] Committed: "fix: remove unused import and print statement"
+[x] Pushed to origin/{branch}
+
+⚠️ 2 issues require manual fix before approval.
+```
+
+### [2] Submit REQUEST CHANGES
+```
+Submitting review with inline comments...
+
+[!] REQUEST CHANGES submitted to PR #{number}
+
+4 issues posted as inline comments.
+URL: https://github.com/owner/repo/pull/{number}
+```
+
+### [3] Show Report Only
+```
+Review report generated. No action taken.
+
+Run @pr-review {number} again after fixing issues.
+```
+
+---
+
+## Verdict Rules
+
+### ✅ APPROVE when:
+- Zero CRITICAL issues
+- Zero ERROR issues
+- Only WARNING or INFO level findings
+
+### ❌ REQUEST CHANGES when:
+- Any CRITICAL security issue
+- Any ERROR level bug
+- Multiple serious WARNINGs (>5)
+
+### ⚠️ APPROVE with comments when:
+- Only minor WARNINGs (≤5)
+- All findings are INFO level
+
+---
+
+## GitHub CLI Commands
+
+### Fetch PR Info
+```bash
+gh pr view <PR_NUMBER> --json title,body,files,commits,headRefOid,baseRefName,headRepository,headRepositoryOwner
+```
+
+### Get Full Diff
+```bash
+gh pr diff <PR_NUMBER>
+```
+
+### Get Specific File from PR
+```bash
+gh pr diff <PR_NUMBER> -- path/to/file.py
+```
+
+### Submit Approval
+```bash
+gh pr review <PR_NUMBER> --approve --body "..."
+```
+
+### Submit Request Changes
+```bash
+gh pr review <PR_NUMBER> --request-changes --body "..."
+```
+
+### Submit with Inline Comments (API)
+```bash
+gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
+  --method POST \
+  -f commit_id="<SHA>" \
+  -f event="REQUEST_CHANGES" \
+  -f body="..." \
+  -f 'comments[0][path]=file.py' \
+  -f 'comments[0][line]=12' \
+  -f 'comments[0][body]=Issue description'
+```
+
+---
+
+## Badge Detection
+
+If PR body contains:
+```markdown
+<!-- CODE-QUALITY-STATUS -->
+## Code Quality
+✅ **Quality checks passed**
+- Date: 2026-01-13
+- Files checked: 5
+- Issues: 0 critical, 0 errors, 2 warnings
+<!-- /CODE-QUALITY-STATUS -->
+```
+
+Then:
+- Check if badge date is recent (<24h)
+- Check for new commits since badge
+- If no new changes → Fast approve
+- If new changes → Only review changed files
+
+---
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| PR not found | Show error with PR URL format help |
+| No access | Prompt to check permissions |
+| Rate limit | Wait and retry |
+| Large diff (>2000 lines) | Warn user, ask to proceed |
+| Binary files | Skip with note |
+
+---
+
+## Scope
+
+### Files Reviewed
+- `*.py` - Full analysis
+- `*.pyi` - Type stub check only
+- `requirements.txt` - Dependency security check
+- `*.yaml/*.yml` - Config security scan
+- `*.json` - Secret detection only
+
+### Files Skipped
+- `*.md` - Documentation (no code review)
+- `*.txt` - Plain text
+- Binary files
+- Generated files (migrations, etc.)
+- Test files (lighter review)
+
+---
+
+**Standards Reference**: `shared/code-quality-standards.mdc`
+**Related**: `@pr-create` - Create PR with quality checks

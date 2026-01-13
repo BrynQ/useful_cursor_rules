@@ -1,0 +1,428 @@
+---
+description: General code quality standards for Python projects
+globs:
+alwaysApply: false
+---
+
+# Code Quality Standards
+
+Universal code quality standards for any Python project. Used by `@pr-review` and `@pr-create` commands.
+
+---
+
+## Severity Definitions
+
+| Level | Description | Action |
+|-------|-------------|--------|
+| **CRITICAL** | Security vulnerabilities, exposed secrets | Must fix immediately |
+| **ERROR** | Code will crash, syntax errors, logic bugs | Must fix before merge |
+| **WARNING** | Code smells, potential issues | Should fix |
+| **INFO** | Style suggestions, improvements | Optional |
+
+---
+
+## Evidence-Based Feedback Rules
+
+[!] **CRITICAL: All feedback must be evidence-based, not vague.**
+
+### Forbidden Vague Terms (without evidence)
+
+These terms are **BANNED** unless accompanied by specific evidence:
+
+| Banned Term | Problem | Required Evidence |
+|-------------|---------|-------------------|
+| "Improved clarity" | What is clearer? | "Now matches pattern in `file.py:23`" |
+| "Better" | Better than what? | "Reduces nesting from 5 to 2 levels" |
+| "Cleaner" | How is it cleaner? | "Removes 3 unused variables" |
+| "Good change" | What's good about it? | "Fixes the null check missing at line 45" |
+| "More readable" | Why more readable? | "Splits 80-char line into readable chunks" |
+| "Nice refactoring" | What was refactored? | "Extracts common logic from lines 12, 45, 78" |
+
+### Confidence Levels
+
+Every observation must include confidence:
+
+```
+[CERTAIN]   - Verifiable fact (unused import, syntax error)
+[LIKELY]    - High confidence but context-dependent
+[UNCERTAIN] - Cannot verify without more context
+[UNKNOWN]   - Cannot assess from available information
+```
+
+**Example output:**
+```
+[CERTAIN] `utils.py:12` - Unused import `json` - not referenced in file
+[LIKELY] `api.py:45` - This duplicates logic in `helpers.py:23`
+[UNCERTAIN] `config.py:8` - Variable `DEBUG` may be used by external config loader
+```
+
+### False Positive Awareness
+
+Flag potential false positives explicitly:
+
+| Scenario | Why it might be false positive |
+|----------|--------------------------------|
+| "Unused import" | May be used via `__import__()`, `getattr()`, or re-exported |
+| "Unused variable" | May be used in f-strings, eval, or by debugger |
+| "Dead code" | May be called via reflection or plugin system |
+| "Missing type hint" | May be intentionally dynamic |
+
+**When flagging, add:**
+```
+⚠️ Potential false positive: Verify `data` is not accessed dynamically 
+before removing.
+```
+
+### What NOT to Do
+
+```python
+# ❌ BAD REVIEW COMMENT:
+# "Good improvement to the imports, much cleaner now"
+
+# ✅ GOOD REVIEW COMMENT:
+# "Import reorganization: grouped stdlib (lines 1-5), third-party (6-10), 
+#  and local imports (11-15) per PEP8. Removed unused `os` import."
+```
+
+```python
+# ❌ BAD REVIEW COMMENT:
+# "Nice refactoring of the authentication logic"
+
+# ✅ GOOD REVIEW COMMENT:
+# "Extracted duplicate token validation from login() (line 45) and 
+#  refresh() (line 89) into validate_token() function, reducing 
+#  code duplication from 15 lines to 3."
+```
+
+---
+
+## Security Checks [CRITICAL]
+
+### Exposed Secrets & Credentials
+
+| Pattern | Description |
+|---------|-------------|
+| `password\s*=\s*["'][^"']+["']` | Hard-coded password |
+| `api_key\s*=\s*["'][^"']+["']` | Hard-coded API key |
+| `secret\s*=\s*["'][^"']+["']` | Hard-coded secret |
+| `token\s*=\s*["'][^"']+["']` | Hard-coded token (exclude variable assignments) |
+| `AWS_ACCESS_KEY_ID` | AWS credentials |
+| `PRIVATE_KEY` | Private key in code |
+| `.pem` file contents | Certificate/key data |
+
+**Exceptions:**
+- Environment variable reads: `os.environ.get("API_KEY")`
+- Config file references: `config["api_key"]`
+- Placeholder values: `"your-api-key-here"`, `"xxx"`, `"***"`
+
+### SQL Injection Risk
+
+| Pattern | Risk |
+|---------|------|
+| `f"SELECT * FROM {table}"` | String interpolation in SQL |
+| `"SELECT * FROM " + table` | String concatenation in SQL |
+| `.execute(f"..."` | Dynamic SQL execution |
+
+**Safe alternative:** Use parameterized queries
+
+### Dangerous Functions
+
+| Function | Risk | Alternative |
+|----------|------|-------------|
+| `eval()` | Code injection | `ast.literal_eval()` |
+| `exec()` | Code injection | Avoid or sandbox |
+| `pickle.loads()` on untrusted data | Arbitrary code execution | Use `json` |
+| `subprocess.shell=True` | Command injection | Use `shell=False` with list |
+| `os.system()` | Command injection | Use `subprocess.run()` |
+
+---
+
+## Error Detection [ERROR]
+
+### Syntax & Import Errors
+
+| Issue | Detection |
+|-------|-----------|
+| Syntax error | Python parser fails |
+| Import error | Module not found, circular import |
+| Name error | Undefined variable used |
+| Attribute error | Non-existent attribute access |
+
+### Logic Errors
+
+| Issue | Pattern |
+|-------|---------|
+| Division by zero risk | `/ variable` without zero check |
+| Index out of bounds risk | `list[i]` without bounds check |
+| None dereference | `obj.method()` when `obj` can be None |
+| Unreachable code | Code after `return`, `raise`, `break` |
+| Infinite loop risk | `while True` without break condition |
+| Empty except | `except:` or `except Exception:` without handling |
+
+### Type Errors
+
+| Issue | Pattern |
+|-------|---------|
+| Type mismatch | Function expects `str`, receives `int` |
+| Return type mismatch | Declares `-> str`, returns `int` |
+| Incompatible operations | `"string" + 5` |
+
+---
+
+## Code Quality [WARNING]
+
+### Unused Code
+
+| Issue | Detection | Auto-Fix |
+|-------|-----------|----------|
+| Unused imports | Import not referenced in file | ✓ Remove |
+| Unused variables | Assigned but never read | ✓ Remove or prefix with `_` |
+| Unused functions | Defined but never called | Manual review |
+| Unused parameters | Parameter not used in function | ✓ Prefix with `_` |
+| Dead code | Code after return/raise | ✓ Remove |
+
+### Code Smells
+
+| Issue | Description |
+|-------|-------------|
+| Too long function | > 50 lines |
+| Too many parameters | > 5 parameters |
+| Too deep nesting | > 4 levels |
+| Duplicate code | Same logic in multiple places |
+| Magic numbers | Hard-coded numbers without explanation |
+| God class | Class with too many responsibilities |
+
+### Debug Artifacts
+
+| Issue | Pattern | Auto-Fix |
+|-------|---------|----------|
+| Print statements | `print(...)` | ✓ Remove or convert to logging |
+| Debug comments | `# DEBUG`, `# TEMP` | ✓ Remove |
+| Commented-out code | Large blocks of `#` code | ✓ Remove |
+| Breakpoints | `breakpoint()`, `pdb.set_trace()` | ✓ Remove |
+| TODO/FIXME | `# TODO`, `# FIXME`, `# HACK` | Flag for review |
+
+---
+
+## Type Hints [WARNING]
+
+### Missing Type Hints
+
+| Location | Requirement |
+|----------|-------------|
+| Function parameters | All public functions should have hints |
+| Function return types | All public functions should declare return |
+| Class attributes | Important attributes should be typed |
+| Variables | Complex types should be annotated |
+
+**Good:**
+```python
+def get_user(user_id: int) -> Optional[User]:
+    ...
+```
+
+**Bad:**
+```python
+def get_user(user_id):
+    ...
+```
+
+### Common Type Hint Issues
+
+| Issue | Example | Fix |
+|-------|---------|-----|
+| Missing Optional | `name: str = None` | `name: Optional[str] = None` |
+| Using `dict` | `data: dict` | `data: Dict[str, Any]` |
+| Using `list` | `items: list` | `items: List[Item]` |
+| Any overuse | `value: Any` everywhere | Use specific types |
+
+---
+
+## Documentation [INFO]
+
+### Missing Documentation
+
+| Element | Requirement |
+|---------|-------------|
+| Public functions | Docstring with description |
+| Public classes | Docstring with purpose |
+| Complex logic | Inline comments explaining "why" |
+| Module | Module-level docstring |
+
+### Docstring Format (Google Style)
+
+```python
+def function(param1: str, param2: int) -> bool:
+    """Short description of function.
+    
+    Longer description if needed.
+    
+    Args:
+        param1: Description of param1.
+        param2: Description of param2.
+        
+    Returns:
+        Description of return value.
+        
+    Raises:
+        ValueError: When param1 is empty.
+    """
+```
+
+---
+
+## Style & Conventions [INFO]
+
+### Naming Conventions
+
+| Element | Convention | Example |
+|---------|------------|---------|
+| Variables | snake_case | `user_name` |
+| Functions | snake_case | `get_user()` |
+| Classes | PascalCase | `UserManager` |
+| Constants | UPPER_SNAKE | `MAX_RETRIES` |
+| Private | Leading underscore | `_internal_method()` |
+| "Unused" | Leading underscore | `for _ in range(10)` |
+
+### Common Style Issues
+
+| Issue | Bad | Good |
+|-------|-----|------|
+| Inconsistent naming | `getUserName` | `get_user_name` |
+| Single letter vars | `x = get_user()` | `user = get_user()` |
+| Abbreviations | `usr_nm` | `user_name` |
+| Boolean naming | `flag` | `is_active`, `has_permission` |
+
+---
+
+## Error Handling [WARNING]
+
+### Bad Patterns
+
+```python
+# BAD: Bare except
+try:
+    risky_operation()
+except:
+    pass
+
+# BAD: Catching Exception without re-raise or logging
+try:
+    risky_operation()
+except Exception:
+    pass
+
+# BAD: Swallowing errors silently
+try:
+    risky_operation()
+except Exception as e:
+    print(e)  # Should use logging
+```
+
+### Good Patterns
+
+```python
+# GOOD: Specific exception
+try:
+    risky_operation()
+except ValueError as e:
+    logger.error(f"Invalid value: {e}")
+    raise
+
+# GOOD: Multiple specific exceptions
+try:
+    risky_operation()
+except (ValueError, TypeError) as e:
+    handle_error(e)
+
+# GOOD: Re-raise after logging
+try:
+    risky_operation()
+except Exception as e:
+    logger.exception("Unexpected error")
+    raise
+```
+
+---
+
+## Auto-Fixable Issues
+
+| Issue | Auto-Fix Action |
+|-------|-----------------|
+| Unused imports | Remove import line |
+| Unused variables | Remove or prefix with `_` |
+| Print statements | Remove or replace with `logger.debug()` |
+| Trailing whitespace | Strip |
+| Missing trailing newline | Add newline at EOF |
+| Breakpoints | Remove |
+| Debug comments | Remove |
+
+---
+
+## Manual Review Required
+
+| Issue | Reason |
+|-------|--------|
+| Logic errors | Need context understanding |
+| Security vulnerabilities | Need security expertise |
+| Type mismatches | May require refactoring |
+| Duplicate code | Need to decide abstraction |
+| Missing error handling | Need to decide strategy |
+
+---
+
+## Validation Badge
+
+When validation passes:
+
+```markdown
+<!-- CODE-QUALITY-STATUS -->
+## Code Quality
+✅ **Quality checks passed**
+- Date: {date}
+- Files checked: {count}
+- Issues: 0 critical, 0 errors, {n} warnings
+<!-- /CODE-QUALITY-STATUS -->
+```
+
+---
+
+## Check Patterns (Regex)
+
+### Security
+```regex
+# Hard-coded secrets
+(password|api_key|secret|token|private_key)\s*=\s*["'][^"']{8,}["']
+
+# SQL injection risk
+(execute|query)\s*\(\s*f["']|["']\s*\+\s*\w+\s*\+\s*["'].*(?:SELECT|INSERT|UPDATE|DELETE)
+```
+
+### Code Quality
+```regex
+# Unused imports (simplified)
+^from\s+(\S+)\s+import\s+(\w+)  # then check if \2 appears elsewhere
+
+# Print statements
+^\s*print\s*\(
+
+# Breakpoints
+^\s*(breakpoint|pdb\.set_trace)\s*\(\s*\)
+
+# TODO/FIXME
+#\s*(TODO|FIXME|HACK|XXX)\b
+
+# Bare except
+except\s*:
+
+# Empty except block
+except.*:\s*\n\s*pass
+```
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-01-13 | Initial general standards |

@@ -1,0 +1,494 @@
+---
+description: Create a Pull Request with code quality validation
+globs:
+alwaysApply: false
+---
+
+# pr-create
+
+## Overview
+
+Create a GitHub Pull Request with automatic code quality validation. Works with any Python project.
+
+**Usage:**
+```
+@pr-create
+@pr-create <optional context>
+@pr-create fixing the authentication bug in login flow
+@pr-create adding rate limiting to API endpoints
+```
+
+---
+
+## Language Rule
+
+[!] **IMPORTANT: All output MUST be written in English.**
+- PR title in English
+- PR description in English
+- All comments in English
+
+---
+
+## Standards Reference
+
+[!] **IMPORTANT**: Quality standards defined in `@shared/code-quality-standards.mdc`
+
+Pre-PR validation checks:
+- 🔒 Security issues (secrets, injection, dangerous functions)
+- ❌ Errors (syntax, logic, types)
+- ⚠️ Warnings (unused code, debug artifacts)
+- 💡 Info (type hints, documentation)
+
+---
+
+## Command Flow
+
+```
+1. Verify git state
+   - Not on main/master branch
+   - Has commits ahead of base
+   - No uncommitted changes (warn if any)
+
+2. Get branch info
+   git branch --show-current
+   git log main..HEAD --oneline
+   git diff main --name-only
+
+3. Pre-PR Quality Check
+   - Scan changed .py files
+   - Check for CRITICAL/ERROR issues
+   - If found → Prompt user
+   - If clean → Continue
+
+4. Check remote state
+   - Branch pushed? If not → Auto-push
+   - PR exists? If yes → Add comment instead
+
+5. Analyze changes
+   - Detect change type (feat/fix/refactor/etc)
+   - Identify affected components
+   - Extract key changes
+
+6. Generate PR content
+   - Title based on commits/changes
+   - Body with summary, changes, checklist
+   - Add quality badge if validation passed
+
+7. Create PR or add comment
+   gh pr create --title "..." --body "..."
+```
+
+---
+
+## Pre-PR Quality Check
+
+### What's Checked
+
+| Category | Checks | Blocking? |
+|----------|--------|-----------|
+| Security | Secrets, SQL injection, dangerous functions | ✅ Yes |
+| Errors | Syntax, undefined vars, logic bugs | ✅ Yes |
+| Warnings | Unused imports, print(), TODO | ❌ No |
+| Info | Type hints, docstrings | ❌ No |
+
+### Validation Output
+
+#### All Clear [OK]
+```
+Pre-PR Quality Check: PASSED ✅
+
+Files scanned: 5
+Security: ✅ No issues
+Errors: ✅ No issues  
+Warnings: ⚠️ 2 minor (non-blocking)
+Info: 💡 3 suggestions
+
+Proceeding with PR creation...
+```
+
+#### Issues Found [!]
+```
+Pre-PR Quality Check: ISSUES FOUND ❌
+
+🔒 CRITICAL (1):
+1. `config.py:12` - Hard-coded API key detected
+   api_key = "sk-live-abc123..."
+
+❌ ERRORS (1):
+1. `utils.py:45` - Bare except swallows all errors
+
+⚠️ WARNINGS (3):
+1. `main.py:8` - Unused import: List
+2. `main.py:67` - Print statement
+3. `helpers.py:23` - TODO comment
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+What would you like to do?
+
+[1] Fix issues first (2 blocking, 2 auto-fixable)
+[2] Create PR anyway (no quality badge)
+[3] Cancel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## User Actions
+
+### [1] Fix Issues First
+
+```
+Fixing auto-fixable issues...
+
+Auto-fixable:
+[x] Removed unused import: List (main.py:8)
+[x] Removed print statement (main.py:67)
+
+Manual fix required:
+[!] `config.py:12` - Replace hard-coded API key with:
+    api_key = os.environ.get("API_KEY")
+
+[!] `utils.py:45` - Add specific exception handling:
+    except ValueError as e:
+        logger.error(f"Validation failed: {e}")
+        raise
+
+After fixing manual issues, run @pr-create again.
+```
+
+### [2] Create PR Anyway
+
+```
+Creating PR without quality badge...
+
+⚠️ PR will be created but:
+- No quality badge added
+- Reviewers will see: "Quality check skipped/failed"
+- @pr-review will do full check
+
+Proceeding...
+```
+
+### [3] Cancel
+
+```
+PR creation cancelled.
+
+Fix the issues above and run @pr-create again.
+```
+
+---
+
+## PR Title Generation
+
+Based on commit analysis and change detection:
+
+| Change Type | Pattern | Example |
+|-------------|---------|---------|
+| New files | feat | `feat(auth): Add OAuth2 login flow` |
+| Bug fixes | fix | `fix(api): Handle null response from server` |
+| Refactoring | refactor | `refactor(utils): Simplify date parsing logic` |
+| Performance | perf | `perf(db): Add query caching` |
+| Tests | test | `test(auth): Add unit tests for login` |
+| Docs | docs | `docs: Update API documentation` |
+| Dependencies | chore | `chore(deps): Update requests to 2.31.0` |
+| Config | chore | `chore(config): Update CI workflow` |
+
+### Title Format
+
+```
+<type>(<scope>): <short description>
+
+Examples:
+- feat(api): Add rate limiting middleware
+- fix(auth): Handle expired tokens gracefully
+- refactor: Simplify error handling logic
+```
+
+---
+
+## PR Body Template
+
+### With Quality Badge (validation passed)
+
+```markdown
+## Summary
+
+{Auto-generated or user-provided summary}
+
+## Changes
+
+- {Change 1 extracted from commits/diff}
+- {Change 2}
+- {Change 3}
+
+## Files Changed
+
+- `path/to/file1.py` - {brief description}
+- `path/to/file2.py` - {brief description}
+
+## Type of Change
+
+- [ ] 🐛 Bug fix (non-breaking)
+- [ ] ✨ New feature (non-breaking)
+- [ ] 💥 Breaking change
+- [ ] 📝 Documentation
+- [ ] 🔧 Configuration
+- [ ] ♻️ Refactoring
+
+## Checklist
+
+- [x] Code quality checks passed
+- [x] No security issues detected
+- [ ] Tests added/updated
+- [ ] Documentation updated
+
+<!-- CODE-QUALITY-STATUS -->
+## Code Quality
+✅ **Quality checks passed**
+- Date: {YYYY-MM-DD}
+- Files checked: {count}
+- Issues: 0 critical, 0 errors, {n} warnings
+<!-- /CODE-QUALITY-STATUS -->
+
+---
+*Generated by PR Bot*
+```
+
+### Without Quality Badge (validation skipped/failed)
+
+```markdown
+## Summary
+
+{Summary}
+
+## Changes
+
+- {Changes}
+
+## Files Changed
+
+- {Files}
+
+## Type of Change
+
+- [ ] 🐛 Bug fix
+- [ ] ✨ New feature
+- [ ] 💥 Breaking change
+
+## Checklist
+
+- [ ] Code quality checks passed
+- [ ] No security issues detected
+- [ ] Tests added/updated
+- [ ] Documentation updated
+
+<!-- CODE-QUALITY-STATUS -->
+## Code Quality
+⚠️ **Quality checks skipped or failed**
+- Issues may be present
+- Full review required
+<!-- /CODE-QUALITY-STATUS -->
+
+---
+*Generated by PR Bot*
+```
+
+---
+
+## Examples
+
+### Example 1: Clean PR
+
+```
+@pr-create adding user authentication
+```
+
+**Output:**
+```
+Pre-PR Quality Check: PASSED ✅
+
+Files scanned: 4
+All checks passed!
+
+Branch 'feature/auth' not on remote. Pushing...
+[x] Pushed to origin/feature/auth
+
+Creating PR...
+
+PR created successfully! ✅
+
+Title: feat(auth): Add user authentication
+URL: https://github.com/owner/repo/pull/15
+
+✅ Quality badge added - review will be faster!
+
+Files: 4 changed
+Commits: 3
+```
+
+### Example 2: PR Already Exists
+
+```
+@pr-create updated error handling per review feedback
+```
+
+**Output:**
+```
+Pre-PR Quality Check: PASSED ✅
+
+PR already exists for this branch!
+PR #15: feat(auth): Add user authentication
+
+Adding update comment...
+
+Comment added:
+─────────────────────────────
+## Update
+
+Updated error handling per review feedback.
+
+### New Commits
+- `abc1234` Improve error messages
+- `def5678` Add retry logic
+
+### Quality Status
+✅ Re-validated - all checks passed
+─────────────────────────────
+
+URL: https://github.com/owner/repo/pull/15
+```
+
+### Example 3: Issues Found
+
+```
+@pr-create
+```
+
+**Output:**
+```
+Pre-PR Quality Check: ISSUES FOUND ❌
+
+🔒 CRITICAL (1):
+1. `settings.py:45` - Database password in code
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[1] Fix issues first
+[2] Create PR anyway
+[3] Cancel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+> 1
+
+Manual fix required:
+[!] `settings.py:45` - Replace with environment variable:
+    DB_PASSWORD = os.environ.get("DB_PASSWORD")
+
+After fixing, run @pr-create again.
+```
+
+---
+
+## GitHub CLI Commands
+
+### Get Branch Info
+```bash
+git branch --show-current
+git log main..HEAD --oneline
+git diff main --name-only
+git diff main --stat
+```
+
+### Check Remote
+```bash
+# Check if branch exists on remote
+git ls-remote --heads origin <branch>
+
+# Push with upstream tracking
+git push -u origin <branch>
+```
+
+### Check Existing PR
+```bash
+gh pr list --head <branch> --json number,url,title
+```
+
+### Create PR
+```bash
+gh pr create --title "..." --body "..."
+```
+
+### Create Draft PR
+```bash
+gh pr create --draft --title "..." --body "..."
+```
+
+### Add Comment to Existing PR
+```bash
+gh pr comment <number> --body "..."
+```
+
+---
+
+## Change Type Detection
+
+| Files Changed | Type |
+|--------------|------|
+| New `.py` files | `feat` |
+| Modified `.py` files with "fix" in commits | `fix` |
+| Only test files | `test` |
+| Only `.md` files | `docs` |
+| `requirements.txt`, `setup.py` | `chore(deps)` |
+| `.github/`, CI files | `chore(ci)` |
+| Renamed/moved files | `refactor` |
+
+---
+
+## Pre-flight Checks
+
+Before creating PR:
+
+```
+[x] Not on main/master branch
+[x] Has commits ahead of base branch
+[x] Quality validation (prompt if issues)
+[x] Branch pushed to remote (auto-push)
+[ ] No uncommitted changes (warn only)
+[x] Check for existing PR (add comment)
+[x] Add quality badge (if validation passed)
+```
+
+---
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| On main/master | Error: "Create a feature branch first" |
+| No commits | Error: "No changes to create PR for" |
+| Uncommitted changes | Warn: "You have uncommitted changes" |
+| Push failed | Error: Check permissions/network |
+| PR create failed | Show GitHub error message |
+| Auth error | Prompt: `gh auth login` |
+
+---
+
+## Scope
+
+### Files Checked
+- `*.py` - Full quality scan
+- `*.pyi` - Type stubs
+- `requirements.txt` - Dependency check
+- `*.yaml/*.yml` - Config scan
+- `*.json` - Secret detection
+
+### Files Skipped
+- `*.md`, `*.txt` - No code
+- Binary files
+- `__pycache__/`
+- `.git/`
+- `venv/`, `env/`
+
+---
+
+**Standards Reference**: `shared/code-quality-standards.mdc`
+**Related**: `@pr-review` - Review existing PRs
