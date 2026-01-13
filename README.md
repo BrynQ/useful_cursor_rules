@@ -1,208 +1,160 @@
 # Useful Cursor Rules
 
-A collection of useful Cursor IDE rules for automated PR review and code quality checks.
+A community-driven collection of useful Cursor IDE rules to boost productivity. Each rule set is designed to be **plug-and-play** - just copy to your `.cursor/rules/` folder and start using.
 
-## 📁 Structure
+---
 
-```
-pr_rules/
-├── commands/
-│   ├── pr-review.mdc    # Review Pull Requests
-│   └── pr-create.mdc    # Create Pull Requests
-└── shared/
-    └── code-quality-standards.mdc  # Quality standards reference
-```
+## 🎯 What's This?
+
+Cursor IDE allows you to create custom AI-powered commands using `.mdc` rule files. This repository collects practical, battle-tested rules that solve real problems.
+
+**Philosophy:**
+- 📦 **Modular** - Take only what you need
+- 🔌 **Plug-and-play** - Copy, paste, use
+- 📝 **Well-documented** - Each rule set has its own README
+- 🧪 **Tested** - Used in production projects
+
+---
+
+## 📁 Available Rule Sets
+
+| Rule Set | Description | Commands |
+|----------|-------------|----------|
+| [**pr_rules**](./pr_rules/) | PR review & creation with code quality checks | `@pr-review`, `@pr-create` |
+
+> 💡 More rule sets coming soon! Feel free to contribute.
+
+---
 
 ## 🚀 Quick Start
 
-### Installation
-
-1. Copy the `pr_rules` folder to your project's `.cursor/rules/` directory:
+### Option 1: Clone specific rules
 
 ```bash
-# Clone this repo
-git clone https://github.com/yakubilik/useful_cursor_rules.git
+# Clone the repo
+git clone https://github.com/BrynQ/useful_cursor_rules.git
 
-# Copy rules to your project
+# Copy only what you need to your project
 cp -r useful_cursor_rules/pr_rules your-project/.cursor/rules/
 ```
 
-2. Ensure GitHub CLI is installed and authenticated:
+### Option 2: Clone everything
+
 ```bash
-gh auth login
+# Clone into your project's .cursor/rules directory
+cd your-project/.cursor/rules
+git clone https://github.com/BrynQ/useful_cursor_rules.git
 ```
 
-### Usage
+### Option 3: Manual download
 
-#### Review a Pull Request
-
-```
-@pr-review 42
-@pr-review https://github.com/owner/repo/pull/42
-```
-
-This will:
-- 🔒 Check for security issues (exposed secrets, SQL injection)
-- ❌ Detect errors (syntax, logic bugs, type mismatches)
-- ⚠️ Find warnings (unused code, print statements, TODOs)
-- 💡 Suggest improvements (type hints, documentation)
-
-#### Create a Pull Request
-
-```
-@pr-create
-@pr-create fixing the login bug
-```
-
-This will:
-- Run pre-PR quality validation
-- Auto-push branch if needed
-- Generate PR title based on commits
-- Add quality badge if validation passes
-- Create PR or add comment if PR exists
-
-## 📋 What Gets Checked
-
-### 🔒 Security (CRITICAL)
-
-| Check | Description |
-|-------|-------------|
-| Hard-coded secrets | Passwords, API keys, tokens in code |
-| SQL injection | String interpolation in SQL queries |
-| Dangerous functions | `eval()`, `exec()`, `os.system()` |
-
-### ❌ Errors (MUST FIX)
-
-| Check | Description |
-|-------|-------------|
-| Syntax errors | Invalid Python syntax |
-| Undefined variables | Using variables before assignment |
-| Bare except | `except:` without specific exception |
-| Unreachable code | Code after return/raise |
-
-### ⚠️ Warnings (SHOULD FIX)
-
-| Check | Description |
-|-------|-------------|
-| Unused imports | Import statements not used |
-| Print statements | Debug prints in production |
-| TODO/FIXME | Unresolved task comments |
-| Breakpoints | `breakpoint()` or `pdb.set_trace()` |
-
-### 💡 Info (OPTIONAL)
-
-| Check | Description |
-|-------|-------------|
-| Missing type hints | Functions without type annotations |
-| Missing docstrings | Public functions without docs |
-| Naming conventions | snake_case, PascalCase violations |
-
-## 🏷️ Quality Badge
-
-When validation passes, PRs get a quality badge:
-
-```markdown
-<!-- CODE-QUALITY-STATUS -->
-## Code Quality
-✅ **Quality checks passed**
-- Date: 2026-01-13
-- Files checked: 5
-- Issues: 0 critical, 0 errors, 2 warnings
-<!-- /CODE-QUALITY-STATUS -->
-```
-
-This enables **fast-path reviews** - if no new commits since badge, review is instant!
-
-## 📝 Examples
-
-### Reviewing a PR
-
-```
-> @pr-review 42
-
-## PR Review: #42 - Add user authentication
-
-**Verdict: ⚠️ APPROVED with comments**
-
-### Quality Summary
-| Check | Status |
-|-------|--------|
-| Security | ✅ No issues |
-| Errors | ✅ No issues |
-| Warnings | 🟡 2 warnings |
-| Info | 💡 3 suggestions |
-
-### ⚠️ Warnings
-1. `auth.py:45` - Unused import: `from typing import List`
-2. `utils.py:23` - TODO without issue reference
-```
-
-### Creating a PR
-
-```
-> @pr-create adding rate limiting
-
-Pre-PR Quality Check: PASSED ✅
-
-PR created successfully!
-Title: feat(api): Add rate limiting
-URL: https://github.com/owner/repo/pull/15
-
-✅ Quality badge added - review will be faster!
-```
-
-## ⚠️ Evidence-Based Feedback
-
-These rules enforce **evidence-based feedback** - no vague comments allowed!
-
-### ❌ Vague (Not Allowed)
-```
-"Good improvement to clarity"
-"Nice refactoring"
-"Better structure"
-```
-
-### ✅ Evidence-Based (Required)
-```
-"Reorganized imports per PEP8: stdlib (1-5), third-party (6-10), local (11-15)"
-"Extracted duplicate logic from lines 45 and 89 into validate_token()"
-"Follows same pattern as existing_file.py:23"
-```
-
-### Confidence Levels
-
-All findings include confidence:
-- `[CERTAIN]` - Verifiable fact (syntax error, unused import)
-- `[LIKELY]` - High confidence, context-dependent
-- `[UNCERTAIN]` - Cannot verify without more context
-
-### False Positive Awareness
-
-The rules explicitly warn about potential false positives:
-- Unused imports may be dynamically accessed
-- "Dead code" may be called via reflection
-- Variables may be used in f-strings or eval
+1. Go to the rule set folder (e.g., `pr_rules/`)
+2. Download the files you need
+3. Copy to your `.cursor/rules/` directory
 
 ---
 
-## 🔧 Customization
+## 📋 Rule Sets Overview
 
-### Adjusting Severity
+### 🔍 PR Rules (`pr_rules/`)
 
-Edit `shared/code-quality-standards.mdc` to change what's CRITICAL vs WARNING.
+Automate PR creation and review with built-in code quality checks.
 
-### Adding Custom Checks
+**Commands:**
+- `@pr-review <PR_NUMBER>` - Review a PR for security, errors, and code quality
+- `@pr-create` - Create a PR with automatic validation
 
-Add new patterns to the "Check Patterns (Regex)" section in the standards file.
+**Features:**
+- Security scanning (secrets, SQL injection, dangerous functions)
+- Error detection (syntax, logic, types)
+- Code quality checks (unused code, debug artifacts)
+- Evidence-based feedback (no vague comments!)
+- False positive awareness
+- Quality badge system for faster reviews
 
-## 📄 License
+[📖 Full documentation](./pr_rules/README.md)
 
-MIT License - feel free to use and modify!
+---
 
 ## 🤝 Contributing
 
-PRs welcome! Please ensure your changes follow the existing format.
+We welcome contributions! Here's how:
+
+### Adding a new rule set
+
+1. Create a folder with a descriptive name (e.g., `test_rules/`)
+2. Add your `.mdc` files following the structure:
+   ```
+   your_rules/
+   ├── commands/
+   │   └── your-command.mdc
+   ├── shared/
+   │   └── your-standards.mdc (optional)
+   └── README.md
+   ```
+3. Write a comprehensive README for your rule set
+4. Submit a PR
+
+### Improving existing rules
+
+1. Fork the repo
+2. Make your changes
+3. Test thoroughly
+4. Submit a PR with clear explanation
+
+### Rule Quality Guidelines
+
+- ✅ **Evidence-based** - No vague feedback (see pr_rules for example)
+- ✅ **Well-documented** - Each command should have clear usage examples
+- ✅ **Modular** - Rules should work independently
+- ✅ **Tested** - Test your rules before submitting
 
 ---
 
-Made with ❤️ for better code reviews
+## 📂 Repository Structure
+
+```
+useful_cursor_rules/
+├── README.md              # This file
+├── pr_rules/              # PR review & creation
+│   ├── README.md          # PR rules documentation
+│   ├── commands/
+│   │   ├── pr-review.mdc
+│   │   └── pr-create.mdc
+│   └── shared/
+│       └── code-quality-standards.mdc
+├── [future_rules]/        # More rule sets coming...
+│   └── ...
+└── CONTRIBUTING.md        # (coming soon)
+```
+
+---
+
+## 💡 Ideas for Future Rule Sets
+
+Want to contribute? Here are some ideas:
+
+| Idea | Description |
+|------|-------------|
+| `test_rules` | Generate and review unit tests |
+| `doc_rules` | Auto-generate documentation |
+| `refactor_rules` | Suggest and apply refactoring |
+| `deploy_rules` | Deployment checklists and validation |
+| `security_rules` | Deep security scanning |
+| `performance_rules` | Performance analysis and suggestions |
+
+---
+
+## 📜 License
+
+MIT License - feel free to use, modify, and distribute!
+
+---
+
+## ⭐ Star This Repo
+
+If you find these rules useful, please star ⭐ the repo! It helps others discover it.
+
+---
+
+Made with ❤️ by the BrynQ team
